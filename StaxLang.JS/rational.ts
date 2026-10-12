@@ -16,23 +16,22 @@ export class Rational {
     constructor(num: bigint, den: bigint) {
         this.numerator = num;
         this.denominator = den;
-        this.reduce();
+        if (den !== 1n) this.reduce();
     }
 
     invert() {
-        return new Rational(this.denominator, this.numerator);
+        if (this.numerator === 0n) throw new Error("rational divide by zero");
+        return this.numerator < 0n
+            ? Rational.fromReduced(-this.denominator, -this.numerator)
+            : Rational.fromReduced(this.denominator, this.numerator);
     }
 
     add(other: Rational): Rational {
-        return new Rational(
-            this.numerator * other.denominator + other.numerator * this.denominator,
-            this.denominator * other.denominator);
+        return this.combine(other, other.numerator);
     }
 
-    subtract(other: Rational) {
-        return new Rational(
-            this.numerator * other.denominator - other.numerator * this.denominator,
-            this.denominator * other.denominator);
+    subtract(other: Rational): Rational {
+        return this.combine(other, -other.numerator);
     }
 
     multiply(other: Rational): Rational {
@@ -48,11 +47,11 @@ export class Rational {
     }
 
     negate() {
-        return new Rational(-this.numerator, this.denominator);
+        return Rational.fromReduced(-this.numerator, this.denominator);
     }
 
     abs() {
-        return new Rational(abs(this.numerator), abs(this.denominator));
+        return Rational.fromReduced(abs(this.numerator), this.denominator);
     }
 
     floor() {
@@ -63,7 +62,10 @@ export class Rational {
     }
 
     ceiling() {
-        return -this.negate().floor();
+        if (this.numerator > 0n) {
+            return (this.numerator + this.denominator - 1n) / this.denominator;
+        }
+        return this.numerator / this.denominator;
     }
 
     mod(other: Rational) {
@@ -76,9 +78,65 @@ export class Rational {
         return this.numerator === other.numerator && this.denominator === other.denominator;
     }
 
+    private combine(other: Rational, otherNumerator: bigint): Rational {
+        if (this.denominator === other.denominator) {
+            return new Rational(
+                this.numerator + otherNumerator, this.denominator);
+        }
+        // Adding or subtracting an integer cannot introduce a common factor
+        if (other.denominator === 1n) {
+            return Rational.fromReduced(
+                this.numerator + otherNumerator * this.denominator,
+                this.denominator);
+        }
+        if (this.denominator === 1n) {
+            return Rational.fromReduced(
+                this.numerator * other.denominator + otherNumerator,
+                other.denominator);
+        }
+        // Use denominator GCDs for large fractions. Direct reduction is
+        // cheaper for small operands and near cancellation
+        if (this.denominator > 0xffffffffffffffffn) {
+            const numerator = this.numerator * other.denominator +
+                otherNumerator * this.denominator;
+            return abs(numerator) < this.denominator
+                ? new Rational(
+                    numerator, this.denominator * other.denominator)
+                : Rational.fromLargeSum(
+                    numerator, this.denominator, other.denominator);
+        }
+        return new Rational(
+            this.numerator * other.denominator +
+                otherNumerator * this.denominator,
+            this.denominator * other.denominator);
+    }
+
+    // Skip reduction only for rationals that we know have
+    // coprime values with a positive denominator
+    private static fromReduced(num: bigint, den: bigint): Rational {
+        const result = new Rational(num, 1n);
+        result.denominator = den;
+        return result;
+    }
+
+    private static fromLargeSum(
+        numerator: bigint, den: bigint, otherDen: bigint): Rational {
+        const common = gcd(den, otherDen);
+        if (common === 1n) {
+            return Rational.fromReduced(numerator, den * otherDen);
+        }
+        const num = numerator / common, divisor = gcd(num, common);
+        return Rational.fromReduced(
+            num / divisor, (den / common) * (otherDen / divisor));
+    }
+
     private reduce() {
         if (this.denominator === 0n) throw new Error("rational divide by zero");
-        let divisor = gcd(this.numerator, this.denominator);
+        if (this.numerator === 0n) {
+            this.denominator = 1n;
+            return;
+        }
+        const divisor = gcd(this.numerator, this.denominator);
         this.numerator /= divisor;
         this.denominator /= divisor;
         if (this.denominator < 0n) {

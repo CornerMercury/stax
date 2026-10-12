@@ -2,9 +2,22 @@ export const abs: (n: bigint) => bigint = (n: bigint) => (n < 0n ? -n : n);
 export function gcd(a: bigint, b: bigint): bigint {
     if (a < 0n) a = -a;
     if (b < 0n) b = -b;
-    if (b > a) [a, b] = [b, a];
+    // Strip powers of two when an operand has 64 trailing zero bits
+    if (a > 0xffffffffffffffffn && b > 0xffffffffffffffffn &&
+        ((a & 0xffffffffffffffffn) === 0n ||
+            (b & 0xffffffffffffffffn) === 0n)) {
+        return gcdRemovingPowersOfTwo(a, b);
+    }
     while (a !== 0n) [a, b] = [b % a, a];
     return b;
+}
+
+function gcdRemovingPowersOfTwo(a: bigint, b: bigint): bigint {
+    const aTwos = a & -a, bTwos = b & -b;
+    a /= aTwos;
+    b /= bTwos;
+    while (a !== 0n) [a, b] = [b % a, a];
+    return b * (aTwos < bTwos ? aTwos : bTwos);
 }
 
 export function nthRoot(val: bigint, n: bigint): bigint {
