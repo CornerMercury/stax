@@ -27,11 +27,11 @@ export class Rational {
     }
 
     add(other: Rational): Rational {
-        return this.combine(other, other.numerator);
+        return this.combine(other.numerator, other.denominator);
     }
 
     subtract(other: Rational): Rational {
-        return this.combine(other, -other.numerator);
+        return this.combine(-other.numerator, other.denominator);
     }
 
     multiply(other: Rational): Rational {
@@ -78,37 +78,37 @@ export class Rational {
         return this.numerator === other.numerator && this.denominator === other.denominator;
     }
 
-    private combine(other: Rational, otherNumerator: bigint): Rational {
-        if (this.denominator === other.denominator) {
+    private combine(otherNumerator: bigint, otherDenominator: bigint): Rational {
+        if (this.denominator === otherDenominator) {
             return new Rational(
                 this.numerator + otherNumerator, this.denominator);
         }
         // Adding or subtracting an integer cannot introduce a common factor
-        if (other.denominator === 1n) {
+        if (otherDenominator === 1n) {
             return Rational.fromReduced(
                 this.numerator + otherNumerator * this.denominator,
                 this.denominator);
         }
         if (this.denominator === 1n) {
             return Rational.fromReduced(
-                this.numerator * other.denominator + otherNumerator,
-                other.denominator);
+                this.numerator * otherDenominator + otherNumerator,
+                otherDenominator);
         }
         // Use denominator GCDs for large fractions. Direct reduction is
         // cheaper for small operands and near cancellation
         if (this.denominator > 0xffffffffffffffffn) {
-            const numerator = this.numerator * other.denominator +
+            const numerator = this.numerator * otherDenominator +
                 otherNumerator * this.denominator;
             return abs(numerator) < this.denominator
                 ? new Rational(
-                    numerator, this.denominator * other.denominator)
+                    numerator, this.denominator * otherDenominator)
                 : Rational.fromLargeSum(
-                    numerator, this.denominator, other.denominator);
+                    numerator, this.denominator, otherDenominator);
         }
         return new Rational(
-            this.numerator * other.denominator +
+            this.numerator * otherDenominator +
                 otherNumerator * this.denominator,
-            this.denominator * other.denominator);
+            this.denominator * otherDenominator);
     }
 
     // Skip reduction only for rationals that we know have
