@@ -16,7 +16,7 @@ export class Rational {
     constructor(num: bigint, den: bigint) {
         this.numerator = num;
         this.denominator = den;
-        if (den !== 1n) this.reduce();
+        this.reduce();
     }
 
     invert() {
@@ -35,13 +35,13 @@ export class Rational {
     }
 
     multiply(other: Rational): Rational {
-        return new Rational (
+        return new Rational(
             this.numerator * other.numerator,
             this.denominator * other.denominator);
     }
 
     divide(other: Rational) {
-        return new Rational (
+        return new Rational(
             this.numerator * other.denominator,
             this.denominator * other.numerator);
     }
@@ -107,7 +107,7 @@ export class Rational {
         }
         return new Rational(
             this.numerator * otherDenominator +
-                otherNumerator * this.denominator,
+            otherNumerator * this.denominator,
             this.denominator * otherDenominator);
     }
 
@@ -131,6 +131,7 @@ export class Rational {
     }
 
     private reduce() {
+        if (this.denominator === 1n) return;
         if (this.denominator === 0n) throw new Error("rational divide by zero");
         if (this.numerator === 0n) {
             this.denominator = 1n;
